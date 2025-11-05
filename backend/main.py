@@ -1,4 +1,5 @@
 from utils import ler_csv, preparar_dados, normalizar_dados, codificar_classes, detectar_dimensoes
+from mlp import treinar, forward_pass
 
 if __name__ == "__main__":
     caminho = "base_treinamento.csv"
@@ -15,3 +16,20 @@ if __name__ == "__main__":
 
     hidden_dim = (input_dim + output_dim) // 2 or 1
     print(f"Neurônios camada oculta: {hidden_dim}")
+
+    print("\nTreinando a MLP... Aguarde...\n")
+
+    W1, B1, W2, B2 = treinar(
+        X_norm, 
+        y_encoded,
+        n_in=input_dim,
+        n_hidden=hidden_dim,
+        n_out=output_dim,
+        taxa=0.5,
+        epocas=5000
+    )
+
+    print("\nTestando a MLP com os dados de treinamento:\n")
+    for entrada in X_norm:
+        _, saida = forward_pass(entrada, W1, B1, W2, B2)
+        print(entrada, "->", saida)
