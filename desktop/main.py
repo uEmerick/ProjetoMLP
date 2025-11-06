@@ -5,8 +5,13 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton,
     QFileDialog, QTextEdit, QLabel
 )
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 from utils import ler_csv, preparar_dados, normalizar_dados, codificar_classes, detectar_dimensoes
-from mlp import treinar, forward_pass
+from mlp import treinar, forward_pass, inicializar_pesos, treinar_epoca
+from trainer_thread import TrainerThread
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -59,6 +64,16 @@ class MainWindow(QMainWindow):
         self.mapa = None
         self.W1 = self.B1 = self.W2 = self.B2 = None
 
+        # Gráfico
+        self.figura = Figure(figsize=(5, 3))
+        self.canvas = FigureCanvas(self.figura)
+        self.layout.addWidget(self.canvas)
+        self.ax = self.figura.add_subplot(111)
+        self.ax.set_xlabel("Época")
+        self.ax.set_ylabel("Erro")
+        self.ax.set_title("Erro da MLP por época")
+
+
     def carregar_csv(self):
         caminho, _ = QFileDialog.getOpenFileName(self, "Selecionar arquivo CSV", "", "CSV Files (*.csv)")
         if caminho:
@@ -77,25 +92,52 @@ class MainWindow(QMainWindow):
 
     def treinar_rede(self):
         if self.X_norm is None or self.y is None:
-            self.status.setText("Carregue e normalize os dados antes de treinar!")
+            self.status.setText("Carregue e normalize os dados primeiro.")
             return
 
-        # Codifica classes
-        y_encoded, self.mapa = codificar_classes(self.y)
-        input_dim, output_dim = detectar_dimensoes(self.X_norm, y_encoded)
-        hidden_dim = (input_dim + output_dim) // 2 or 1
+        # Codificar classes (se ainda não foi)
+        self.y_encoded, self.mapa = codificar_classes(self.y)
 
-        self.W1, self.B1, self.W2, self.B2 = treinar(
-            self.X_norm, y_encoded,
-            n_in=input_dim,
-            n_hidden=hidden_dim,
-            n_out=output_dim,
-            taxa=0.5,
-            epocas=5000
+        # Dimensões e hiperparâmetros
+        n_in = len(self.X_norm[0])
+        n_out = len(self.y_encoded[0])
+        n_hidden = max(1, (n_in + n_out) // 2)
+        epocas = 5000
+        taxa = 0.1
+
+        # Criar thread de treino
+        self.thread = TrainerThread(
+            self.X_norm,
+            self.y_encoded,
+            n_hidden=n_hidden,
+            epocas=epocas,
+            taxa=taxa
         )
+        self.thread.progresso_signal.connect(self.atualizar_grafico)
+        self.thread.fim_signal.connect(self.finalizou_treino)
+        self.thread.start()
 
-        self.status.setText(f"Treino concluído! Camada oculta: {hidden_dim} neurônios")
+        self.status.setText("Treinamento iniciado...")
+
+
+    def atualizar_grafico(self, epoch, erro):
+        # armazenar e plotar incrementalmente
+        if not hasattr(self, "erros"):
+            self.erros = []
+        self.erros.append(erro)
+        self.ax.clear()
+        self.ax.plot(self.erros)
+        self.ax.set_xlabel("Época")
+        self.ax.set_ylabel("Erro")
+        self.canvas.draw()
+        self.status.setText(f"Treinando... Época {epoch}, Erro {erro:.6f}")
+
+    def finalizou_treino(self, pesos):
+        self.W1, self.B1, self.W2, self.B2 = pesos
+        self.status.setText("Treino finalizado ✅")
         self.btn_testar.setEnabled(True)
+
+
 
     def testar_amostras(self):
         if not all([self.W1, self.B1, self.W2, self.B2]):

@@ -74,6 +74,23 @@ def forward_pass(X, W1, B1, W2, B2):
 
     return hidden_activated, output_activated
 
+def treinar_epoca(X_train, Y_train, W1, B1, W2, B2, taxa=0.1):
+    """
+    Executa UMA época de treino (varre todas as amostras),
+    chama forward_pass + backpropagation para cada amostra,
+    atualiza pesos in-place e retorna o erro total da época.
+    """
+    erro_total = 0.0
+    for X, y in zip(X_train, Y_train):
+        # forward
+        hidden, output = forward_pass(X, W1, B1, W2, B2)
+
+        # backpropagation atualiza W1,B1,W2,B2 in-place e retorna mse da amostra
+        mse = backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa)
+        erro_total += mse
+
+    return erro_total  # soma dos MSEs (ou média se preferir)
+
 def backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa):
     # 1) erro na saída
     erro_saida = [y[k] - output[k] for k in range(len(y))]
