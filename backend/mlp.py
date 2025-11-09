@@ -1,164 +1,174 @@
-"""""
-Contém a implementação da MLP.
-
-Aqui você coloca:
-
-Definição da classe MLP
-
-Inicialização dos pesos
-
-Funções de ativação (linear, logística, tangente hiperbólica)
-
-Forward pass e backpropagation
-
-Critérios de parada (erro ou número de iterações)
-
-Objetivo: manter a lógica da rede neural separada do resto da aplicação.
-
 """
+Contém a implementação da MLP (atualizado).
+
+- Funções de ativação: linear, logistica (sigmoid), hiperbolica (tanh)
+- forward_pass e backpropagation parametrizados por ativação
+- treinar_epoca retorna erro médio da época
+- inicializar_pesos mantida
+"""
+
 import random
 import math
 
 # Inicializa pesos
 def inicializar_pesos(n_in, n_hidden, n_out):
-    # pesos entrada -> oculta
+    # pesos entrada -> oculta (n_hidden x n_in)
     W1 = [[random.uniform(-1, 1) for _ in range(n_in)] for _ in range(n_hidden)]
-    
-    # bias camada oculta
     B1 = [random.uniform(-1, 1) for _ in range(n_hidden)]
 
-    # pesos oculta -> saída
+    # pesos oculta -> saída (n_out x n_hidden)
     W2 = [[random.uniform(-1, 1) for _ in range(n_hidden)] for _ in range(n_out)]
-
-    # bias camada de saída
     B2 = [random.uniform(-1, 1) for _ in range(n_out)]
 
     return W1, B1, W2, B2
 
 
-# Função logística (sigmoid)
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
+# -------------------------
+# Funções de ativação
+# -------------------------
+def ativacao_val(x, tipo="logistica"):
+    """Recebe valor escalar x e tipo e retorna ativação."""
+    if tipo == "linear":
+        return x
+    elif tipo == "hiperbolica":
+        # tanh
+        return math.tanh(x)
+    else:
+        # logística / sigmoid
+        return 1.0 / (1.0 + math.exp(-x))
 
-# Derivada da sigmoid (entrada deve ser a saída da sigmoid)
-def sigmoid_deriv(x):
-    return x * (1 - x)
+
+def derivada_ativacao_por_saida(saida_ativada, tipo="logistica"):
+    """
+    Recebe a saída já ativada (por exemplo sigmoid(x) ou tanh(x))
+    e retorna a derivada em relação a x.
+    """
+    if tipo == "linear":
+        return 1.0
+    elif tipo == "hiperbolica":
+        # d(tanh)/dx = 1 - tanh^2(x) -> usando saida_ativada
+        return 1.0 - (saida_ativada ** 2)
+    else:
+        # logística: f'(x) = f(x) * (1 - f(x))
+        return saida_ativada * (1.0 - saida_ativada)
 
 
-def forward_pass(X, W1, B1, W2, B2):
+# -------------------------
+# Forward pass parametrizado
+# -------------------------
+def forward_pass(X, W1, B1, W2, B2, ativacao_tipo="logistica"):
+    """
+    X: vetor de entrada (lista)
+    W1: list of lists (n_hidden x n_in)
+    B1: list biases hidden (n_hidden)
+    W2: list of lists (n_out x n_hidden)
+    B2: list biases out (n_out)
+    ativacao_tipo: 'linear' | 'logistica' | 'hiperbolica'
+    retorna: (hidden_ativada_list, output_ativada_list)
+    """
     # camada oculta
     hidden_raw = []
     hidden_activated = []
-
-    for j in range(len(W1)):  
-        soma = 0
+    for j in range(len(W1)):
+        s = 0.0
         for i in range(len(X)):
-            soma += X[i] * W1[j][i]
-        soma += B1[j]
-
-        hidden_raw.append(soma)
-        hidden_activated.append(sigmoid(soma))
+            s += X[i] * W1[j][i]
+        s += B1[j]
+        hidden_raw.append(s)
+        hidden_activated.append(ativacao_val(s, ativacao_tipo))
 
     # camada de saída
     output_raw = []
     output_activated = []
-
     for k in range(len(W2)):
-        soma = 0
+        s = 0.0
         for j in range(len(hidden_activated)):
-            soma += hidden_activated[j] * W2[k][j]
-        soma += B2[k]
-
-        output_raw.append(soma)
-        output_activated.append(sigmoid(soma))
+            s += hidden_activated[j] * W2[k][j]
+        s += B2[k]
+        output_raw.append(s)
+        output_activated.append(ativacao_val(s, ativacao_tipo))
 
     return hidden_activated, output_activated
 
-def treinar_epoca(X_train, Y_train, W1, B1, W2, B2, taxa=0.1):
+
+# -------------------------
+# Backpropagation parametrizado
+# -------------------------
+def backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa, ativacao_tipo="logistica"):
     """
-    Executa UMA época de treino (varre todas as amostras),
-    chama forward_pass + backpropagation para cada amostra,
-    atualiza pesos in-place e retorna o erro total da época.
+    X: vetor de entrada
+    y: vetor alvo (one-hot)
+    hidden: lista ativada da camada oculta
+    output: lista ativada da camada de saída
+    atualiza pesos in-place
+    retorna: mse (erro quadrático médio da amostra)
     """
-    erro_total = 0.0
-    for X, y in zip(X_train, Y_train):
-        # forward
-        hidden, output = forward_pass(X, W1, B1, W2, B2)
-
-        # backpropagation atualiza W1,B1,W2,B2 in-place e retorna mse da amostra
-        mse = backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa)
-        erro_total += mse
-
-    return erro_total  # soma dos MSEs (ou média se preferir)
-
-def backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa):
-    # 1) erro na saída
+    # erro na saída (y - output)
     erro_saida = [y[k] - output[k] for k in range(len(y))]
 
-    # 2) gradiente da saída (delta)
-    delta_saida = [erro_saida[k] * sigmoid_deriv(output[k]) for k in range(len(output))]
+    # delta na saída (usando derivada baseada na saída ativada)
+    delta_saida = [
+        erro_saida[k] * derivada_ativacao_por_saida(output[k], ativacao_tipo)
+        for k in range(len(output))
+    ]
 
-    # 3) erro na camada oculta
+    # erro na camada oculta (retropropagar)
     erro_oculta = []
     for j in range(len(hidden)):
-        soma = sum(delta_saida[k] * W2[k][j] for k in range(len(delta_saida)))
+        soma = 0.0
+        for k in range(len(delta_saida)):
+            soma += delta_saida[k] * W2[k][j]
         erro_oculta.append(soma)
 
-    # 4) gradiente da oculta (delta)
-    delta_oculta = [erro_oculta[j] * sigmoid_deriv(hidden[j]) for j in range(len(hidden))]
+    # delta na oculta
+    delta_oculta = [
+        erro_oculta[j] * derivada_ativacao_por_saida(hidden[j], ativacao_tipo)
+        for j in range(len(hidden))
+    ]
 
-    # 5) atualizar pesos W2 e B2
+    # atualizar W2 e B2
     for k in range(len(W2)):
         for j in range(len(W2[k])):
             W2[k][j] += taxa * delta_saida[k] * hidden[j]
         B2[k] += taxa * delta_saida[k]
 
-    # 6) atualizar pesos W1 e B1
+    # atualizar W1 e B1
     for j in range(len(W1)):
         for i in range(len(W1[j])):
             W1[j][i] += taxa * delta_oculta[j] * X[i]
         B1[j] += taxa * delta_oculta[j]
 
-    # retorna erro quadrático médio
-    mse = sum(e**2 for e in erro_saida) / len(erro_saida)
+    mse = sum(e ** 2 for e in erro_saida) / len(erro_saida)
     return mse
 
-def treinar(X_train, Y_train, n_in, n_hidden, n_out, taxa=0.1, epocas=5000):
+
+# -------------------------
+# treinar_epoca: varre todas as amostras e chama backpropagation
+# -------------------------
+def treinar_epoca(X_train, Y_train, W1, B1, W2, B2, taxa=0.1, ativacao_tipo="logistica"):
+    """
+    Executa UMA época de treino (varre todas as amostras),
+    atualiza pesos in-place e retorna o erro médio da época.
+    """
+    erros = []
+    for X, y in zip(X_train, Y_train):
+        hidden, output = forward_pass(X, W1, B1, W2, B2, ativacao_tipo)
+        mse = backpropagation(X, y, hidden, output, W1, B1, W2, B2, taxa, ativacao_tipo)
+        erros.append(mse)
+
+    # retornar erro médio da época
+    if len(erros) == 0:
+        return 0.0
+    return sum(erros) / len(erros)
+
+
+# -------------------------
+# Função utilitária de treino (legacy, não usada pela thread)
+# -------------------------
+def treinar(X_train, Y_train, n_in, n_hidden, n_out, taxa=0.1, epocas=5000, ativacao_tipo="logistica"):
     W1, B1, W2, B2 = inicializar_pesos(n_in, n_hidden, n_out)
-
     for epoca in range(epocas):
-        erro_total = 0
-
-        for X, y in zip(X_train, Y_train):
-            # FORWARD
-            hidden, output = forward_pass(X, W1, B1, W2, B2)
-
-            # Calcular erro saída
-            erro_saida = [y[i] - output[i] for i in range(len(y))]
-            erro_total += sum(e**2 for e in erro_saida) / 2
-
-            # Gradiente Saída
-            delta_saida = [erro_saida[i] * sigmoid_deriv(output[i]) for i in range(len(y))]
-
-            # Gradiente Oculta
-            delta_oculta = []
-            for j in range(n_hidden):
-                erro_j = sum(delta_saida[k] * W2[k][j] for k in range(n_out))
-                delta_oculta.append(erro_j * sigmoid_deriv(hidden[j]))
-
-            # Atualizar pesos W2
-            for k in range(n_out):
-                for j in range(n_hidden):
-                    W2[k][j] += taxa * delta_saida[k] * hidden[j]
-                B2[k] += taxa * delta_saida[k]
-
-            # Atualizar pesos W1
-            for j in range(n_hidden):
-                for i in range(n_in):
-                    W1[j][i] += taxa * delta_oculta[j] * X[i]
-                B1[j] += taxa * delta_oculta[j]
-
+        erro_medio = treinar_epoca(X_train, Y_train, W1, B1, W2, B2, taxa, ativacao_tipo)
         if epoca % 500 == 0:
-            print(f"Época {epoca}, Erro = {erro_total:.4f}")
-
+            print(f"Época {epoca}, Erro médio = {erro_medio:.6f}")
     return W1, B1, W2, B2
