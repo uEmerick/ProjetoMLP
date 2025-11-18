@@ -22,7 +22,6 @@ def inicializar_pesos(n_in, n_hidden, n_out):
 
     return W1, B1, W2, B2
 
-
 # -------------------------
 # Funções de ativação
 # -------------------------

@@ -11,6 +11,8 @@ Detecção de platô e ajuste da taxa de aprendizado
 Leitura de CSV e pré-processamento
 """
 import csv
+from sklearn.model_selection import train_test_split
+
 
 def ler_csv(caminho):
     dados = []
@@ -81,3 +83,24 @@ def detectar_dimensoes(X, y_encoded):
     output_dim = len(y_encoded[0])
     return input_dim, output_dim
 
+def dividir_treino_teste(X, y, test_size=0.3, random_state=42):
+    """Divide os dados em conjuntos de treino e teste."""
+    try:
+        # TENTATIVA com estratificação (ideal para classificação)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=y
+        )
+    except Exception as e:
+        print(f"Stratify falhou ({e}). Tentando sem estratificação...")
+        # FALLBACK sem stratify
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y,
+            test_size=test_size,
+            random_state=random_state,
+        )
+
+    print(f"Treino: {len(X_train)} amostras  |  Teste: {len(X_test)} amostras\n")
+    return X_train, X_test, y_train, y_test

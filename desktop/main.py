@@ -11,8 +11,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
-
-from utils import ler_csv, preparar_dados, normalizar_dados, codificar_classes
+from sklearn.model_selection import train_test_split
+from utils import ler_csv, preparar_dados, normalizar_dados, codificar_classes, dividir_treino_teste
 from mlp import forward_pass
 from trainer_thread import TrainerThread
 
@@ -20,7 +20,7 @@ from trainer_thread import TrainerThread
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Projeto MLP - Desktop")
+        self.setWindowTitle("Projeto MLP")
         self.setMinimumSize(1080, 700)
 
         # === Widget central ===
@@ -172,6 +172,16 @@ class MainWindow(QMainWindow):
             self.status.setText("Carregue o CSV antes de continuar.")
             return
 
+        X_train, X_test, y_train, y_test = dividir_treino_teste(
+        self.X_norm,
+        self.y_encoded,
+        test_size=0.3
+        )
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test
+
         # calcular automaticamente n_hidden e n_output
         n_in = len(self.X_norm[0])
         if isinstance(self.y_encoded[0], (list, tuple, np.ndarray)):
@@ -197,8 +207,8 @@ class MainWindow(QMainWindow):
 
         # cria thread de treino com parâmetros
         self.thread = TrainerThread(
-            X=self.X_norm,
-            y=self.y_encoded,
+            X=self.X_train,
+            y=self.y_train,
             n_hidden=n_hidden,
             epocas=epocas,
             taxa=taxa,
@@ -275,7 +285,7 @@ class MainWindow(QMainWindow):
     def testar_amostras(self):
         # Gera previsões (classe com maior ativação na saída)
         previsoes = []
-        for entrada in self.X_norm:
+        for entrada in self.X_test:
             _, saida = forward_pass(entrada, self.W1, self.B1, self.W2, self.B2, ativacao_tipo=self.combo_ativ.currentText().lower() if False else None)
             # NOTE: forward_pass no mlp espera ativacao_tipo em nome 'logistica'|'hiperbolica'|'linear'
             # mas aqui chamamos diretamente com o mesmo tipo que treinou na thread, para simplicidade assumiremos sigmoid-like.
@@ -287,10 +297,10 @@ class MainWindow(QMainWindow):
             previsoes.append(pred)
 
         # converter y_encoded para índices
-        if isinstance(self.y_encoded[0], (list, tuple, np.ndarray)):
-            y_true = np.array([int(np.argmax(y)) for y in self.y_encoded])
+        if isinstance(self.y_test[0], (list, tuple, np.ndarray)):
+            y_true = np.array([int(np.argmax(y)) for y in self.y_test])
         else:
-            y_true = np.array([int(y) for y in self.y_encoded])
+            y_true = np.array([int(y) for y in self.y_test])
 
         self.mostrar_matriz_confusao(y_true, np.array(previsoes))
         self.status.setText("Treino e avaliação concluídos com sucesso!")
