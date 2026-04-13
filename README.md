@@ -1,5 +1,3 @@
-content = """# Projeto MLP (Perceção Multicamadas)
-
 Este projeto consiste numa implementação completa de uma rede neuronal artificial do tipo **Multi-Layer Perceptron (MLP)** desenvolvida em Python. O sistema foi construído com a separação entre a lógica base da rede (construída de raiz) e uma Interface Gráfica de Utilizador (GUI) interativa.
 
 ## 🚀 Funcionalidades
