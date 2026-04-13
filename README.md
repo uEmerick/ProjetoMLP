@@ -38,7 +38,15 @@ Contém a aplicação Desktop construída sobre o *backend*.
 * **Gráficos e Avaliação**: Matplotlib, NumPy e Scikit-learn (`confusion_matrix`, `train_test_split`)
 * **Estruturas Base**: Módulos embutidos como `math`, `random` e `csv`.
 
+<img align="center" alt="Python" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" /> Linguagem: Python 3.x
+
+<img align="center" alt="Qt" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/qt/qt-original.svg" /> Interface Gráfica: PySide6 (Qt)
+
+<img align="center" alt="Matplotlib" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/matplotlib/matplotlib-original.svg" /> Gráficos e Avaliação: Matplotlib, <img align="center" alt="NumPy" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg" /> NumPy e <img align="center" alt="Scikit-Learn" height="20" width="20" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/scikitlearn/scikitlearn-original.svg" /> Scikit-learn (confusion_matrix, train_test_split)
+
+Estruturas Base: Módulos embutidos como math, random e csv.
+
 ## ⚙️ Como Executar
 
 ### 1. Instalar as Dependências
-Certifique-se de que tem o Python instalado no seu sistema. De seguida, instale as bibliotecas necessárias:
+Certifique-se de que tem o Python instalado no seu sistema. De seguida, instale as bibliotecas necessárias.
